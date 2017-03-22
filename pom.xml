@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>me.chipnesh.ev3</groupId>
+    <artifactId>remote-car</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <legoBrick.host>192.168.1.127</legoBrick.host>
+        <legoBrick.home>/home/lejos/programs</legoBrick.home>
+        <legoBrick.user>root</legoBrick.user>
+        <legoBrick.debug.port>4000</legoBrick.debug.port>
+        <project.main.class>me.chipnesh.Main</project.main.class>
+        <kotlin.version>1.1.1</kotlin.version>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>http://jcenter.bintray.com</url>
+        </repository>
+    </repositories>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>${project.main.class}</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <inherited>false</inherited>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.7</version>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <echo message="Push to dataStream ${project.build.directory}/${project.build.finalName}*.jar"></echo>
+                                <scp trust="yes" username="${legoBrick.user}" password="" todir="root@${legoBrick.host}:${legoBrick.home}">
+                                    <fileset dir="${project.build.directory}">
+                                        <include name="${project.build.finalName}*.jar">
+                                        </include></fileset>
+                                </scp>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>default-cli</id>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <!-- SSH -->
+                                <taskdef name="sshexec" classname="org.apache.tools.ant.taskdefs.optional.ssh.SSHExec" classpathref="maven.plugin.classpath"/>
+                                <taskdef resource="net/sf/antcontrib/antcontrib.properties" classpathref="maven.plugin.classpath"/>
+                                <!-- run the jar -->
+                                <if>
+                                    <equals arg1="${debug}" arg2="true"/>
+                                    <then>
+                                        <sshexec host="${legoBrick.host}" trust="yes" username="${legoBrick.user}" password="" command="jrun -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=4000 -cp ${legoBrick.home}/${project.build.finalName}-jar-with-dependencies.jar ${project.main.class}">
+                                        </sshexec>
+                                    </then>
+                                    <else>
+                                        <sshexec host="${legoBrick.host}" trust="yes" username="${legoBrick.user}" password="" command="jrun -cp ${legoBrick.home}/${project.build.finalName}-jar-with-dependencies.jar ${project.main.class}">
+                                        </sshexec></else>
+                                </if>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+
+                <dependencies>
+                    <dependency>
+                        <groupId>commons-net</groupId>
+                        <artifactId>commons-net</artifactId>
+                        <version>1.4.1</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>ant</groupId>
+                        <artifactId>ant-commons-net</artifactId>
+                        <version>1.6.5</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>ant</groupId>
+                        <artifactId>ant-jsch</artifactId>
+                        <version>1.6.5</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>jsch</groupId>
+                        <artifactId>jsch</artifactId>
+                        <version>0.1.29</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>ant-contrib</groupId>
+                        <artifactId>ant-contrib</artifactId>
+                        <version>20020829</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>ev3classes</groupId>
+                        <artifactId>ev3classes</artifactId>
+                        <version>1</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>opencv</groupId>
+                        <artifactId>opencv</artifactId>
+                        <version>2411</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.jetbrains.kotlinx</groupId>
+                        <artifactId>kotlinx-coroutines-core</artifactId>
+                        <version>0.13</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin.version}</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <args>
+                        <arg>-Xcoroutines=enable</arg>
+                    </args>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>testCompile</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>testCompile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>ev3classes</groupId>
+            <artifactId>ev3classes</artifactId>
+            <version>1</version>
+        </dependency>
+        <dependency>
+            <groupId>dbusjava</groupId>
+            <artifactId>dbusjava</artifactId>
+            <version>1</version>
+        </dependency>
+        <dependency>
+            <groupId>opencv</groupId>
+            <artifactId>opencv</artifactId>
+            <version>2411</version></dependency>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>3.2.7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-test</artifactId>
+            <version>${kotlin.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <version>${kotlin.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlinx</groupId>
+            <artifactId>kotlinx-coroutines-core</artifactId>
+            <version>0.13</version>
+        </dependency>
+    </dependencies>
+
+</project>
